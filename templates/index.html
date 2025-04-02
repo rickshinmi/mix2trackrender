@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>DJ mix トラック識別アプリ</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <h1>🎧 DJ mix トラック識別アプリ</h1>
+  <form id="upload-form">
+    <input type="file" name="file" id="file" accept=".mp3" required />
+    <button type="submit">⏳ 解析スタート</button>
+  </form>
+  <div id="results"></div>
+
+  <script>
+    const form = document.getElementById("upload-form");
+    const results = document.getElementById("results");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      results.innerHTML = "⏳ 音源を解析中...";
+      const file = document.getElementById("file").files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      results.innerHTML = "";
+      if (data.length === 0) {
+        results.innerHTML = "⚠️ トラックは見つかりませんでした。";
+      } else {
+        data.forEach(d => {
+          const el = document.createElement("div");
+          el.textContent = `🕒 ${d.time} → 🎵 ${d.title} / ${d.artist}`;
+          results.appendChild(el);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
