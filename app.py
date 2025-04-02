@@ -1,14 +1,14 @@
-import os
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, jsonify
 import numpy as np
-import io
 import soundfile as sf
 from pydub import AudioSegment
 import requests, time, hmac, hashlib, base64
+import io
+import os
 
 app = Flask(__name__)
 
-# === ACRCloud credentials from environment ===
+# ACRCloud Credentials from environment variables
 ACCESS_KEY = os.environ.get("access_key")
 ACCESS_SECRET = os.environ.get("access_secret")
 HOST = "identify-ap-southeast-1.acrcloud.com"
@@ -36,29 +36,43 @@ def recognize_audio(wav_bytes):
     res = requests.post(REQURL, files=files, data=data)
     return res.json()
 
+@app.route('/')
+def index():
+    return render_template("index.html")
+
 @app.route('/upload', methods=['POST'])
 def upload():
     if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+        return jsonify({"error": "ファイルがありません"}), 400
 
     mp3_file = request.files['file']
     audio = AudioSegment.from_file(mp3_file, format="mp3")
+    sr = audio.frame_rate
     samples = np.array(audio.get_array_of_samples())
+
     if audio.channels == 2:
         samples = samples.reshape((-1, 2)).mean(axis=1)
-    samples = samples.astype(np.float32) / (2**15)
+    audio_data = samples.astype(np.float32) / (2**15)
 
-    # Convert 30 seconds to WAV
-    sr = audio.frame_rate
-    seg = samples[:int(30 * sr)]
-    buf = io.BytesIO()
-    sf.write(buf, seg, sr, format='WAV')
-    buf.seek(0)
+    # 30秒ごとに分割して識別
+    segment_len = int(30 * sr)
+    results = []
+    displayed = []
 
-    result = recognize_audio(buf)
-    return jsonify(result)
+    for i in range(0, len(audio_data), segment_len):
+        segment = audio_data[i:i + segment_len]
+        buf = io.BytesIO()
+        sf.write(buf, segment, sr, format='WAV')
+        buf.seek(0)
 
-@app.route('/')
-def home():
-    return "✅ Flaskアプリは動作しています！"
+        result = recognize_audio(buf)
+        if result.get("status", {}).get("msg") == "Success":
+            metadata = result['metadata']['music'][0]
+            title = metadata.get("title", "Unknown").strip()
+            artist = metadata.get("artists", [{}])[0].get("name", "Unknown").strip()
+            if (title, artist) not in displayed:
+                displayed.append((title, artist))
+                mmss = f"{i//sr//60:02}:{i//sr%60:02}"
+                results.append({"time": mmss, "title": title, "artist": artist})
 
+    return jsonify(results)
