@@ -3,3 +3,4 @@ requests
 pydub
 numpy
 soundfile
+gunicorn
