@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 import numpy as np
 import io
@@ -7,9 +8,9 @@ import requests, time, hmac, hashlib, base64
 
 app = Flask(__name__)
 
-# === ACRCloud credentials ===
-ACCESS_KEY = "あなたのACRCloudのキー"
-ACCESS_SECRET = "あなたのACRCloudのシークレット"
+# === ACRCloud credentials from environment ===
+ACCESS_KEY = os.environ.get("access_key")
+ACCESS_SECRET = os.environ.get("access_secret")
 HOST = "identify-ap-southeast-1.acrcloud.com"
 REQURL = f"https://{HOST}/v1/identify"
 
