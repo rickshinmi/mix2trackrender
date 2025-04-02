@@ -57,3 +57,8 @@ def upload():
 
     result = recognize_audio(buf)
     return jsonify(result)
+
+@app.route('/')
+def home():
+    return "✅ Flaskアプリは動作しています！"
+
